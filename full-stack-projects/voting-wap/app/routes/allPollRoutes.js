@@ -18,7 +18,7 @@ var getPoll = function(req, res, next) {
 				} else {
 					ipAddr = req.connection.remoteAddress;
 				}
-				
+
 				if (poll.viewedIp.indexOf(ipAddr) === -1 ) {
 					poll.views += 1;
 					poll.viewedIp.push(ipAddr);
@@ -36,16 +36,16 @@ var getPoll = function(req, res, next) {
 					req.userVoted = true;
 					console.log("votes block will not show");
 				}
-				
+
 				poll.save(function(err) {
 					if (err) {
 						console.error('Some Error happened while updating views of poll!', err);
-						res.status(500).send({ 'error': 'Some Error happened while updating views of poll!' });	
+						res.status(500).send({ 'error': 'Some Error happened while updating views of poll!' });
 					} else {
 						req.pollRequested = poll;
 						next();
 					}
-					
+
 				});
 			}
 		});
@@ -72,7 +72,20 @@ var addVote = function(req, res, next) {
 					ipAddr = req.connection.remoteAddress;
 				}
 				poll.votedIp.push(ipAddr);
-				// we are setting req.userVoted true after voting so that voting block doesnt displays again 
+				// If logged IN, increase poll voted count of user
+				if (req.user) {
+					Users.
+						findByIdAndUpdate(req.user._id, {$inc: {pollsVotedCount: 1}})
+						.exec(function(err) {
+							if (err) {
+					    	console.error('Some Error happened while increasing polls voted count!', err);
+							res.status(500).send({ 'error': 'Some Error happened while increasing polls voted count!' });
+							} else {
+								console.log("Successfully increased user's pollsVoted Count");
+							}
+						});
+				}
+				// we are setting req.userVoted true after voting so that voting block doesnt displays again
 				req.userVoted = true;
 				console.log("vote block will not show");
 				poll.markModified('votedIp');
@@ -98,10 +111,10 @@ var deletePoll = function(req, res) {
 		 		Users
 					.findByIdAndUpdate(req.user._id, {$inc : {pollsCount : -1}})
 					.exec(function (err, user) {
-							if (err) { 
+							if (err) {
 								console.error('Some error happened while decreasing poll count from user\'s account');
 								res.status(500).send({ 'error': 'Some error happened while decreasing poll count from user\'s account' });
-							} 
+							}
 							else {
 								console.log('Poll count decreased and poll successfully removed from polls collection!');
 								res.status(200).send();
